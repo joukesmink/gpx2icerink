@@ -6,6 +6,12 @@ import datetime
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 import random
+from scipy.fftpack import fft
+from numpy.fft import fft, ifft, fft2, ifft2, fftshift
+from scipy.signal import correlate
+import numpy as np
+
+minimum_lap_time = 40
 
 data_path = '/Users/Jouke/Downloads/*lekker*.gpx'
 
@@ -27,9 +33,12 @@ def main():
     for gpx_filename1 in all_gpx_files:
         # open 1 file at the time and create a filename for the converted file in folder converted
         gpx_filename2 =  gpx_filename1.replace('Downloads', 'Downloads/converted')
+        gpx_filename3 =  gpx_filename1.replace('Downloads', 'Downloads/converted')
+        gpx_filename3 =  gpx_filename3.replace('gpx', 'txt')
         print (gpx_filename1, "->", gpx_filename2)
         gpx_file1 = open(gpx_filename1, 'r')
         gpx_file2 = open(gpx_filename2, 'w')
+        gpx_file3 = open(gpx_filename3, 'w')
     
         # Parse the gpx file
         gpx = gpxpy.parse(gpx_file1)
@@ -37,7 +46,6 @@ def main():
         lon = []
         alt = []
         time = []
-        rondes = []
         for track in gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
@@ -50,21 +58,58 @@ def main():
 #                    for i in p:
 #                        print(i, p[i])
 #                   print (p['TrackPointExtension']['hr'])
-                    rondes.append(0)
-        lat_s = savgol_filter(lat, 45, 5) # deze 45 en 3 zijn maar wat gegokt
-        rondetijden = []
-        print("max min =", max(lat_s), min(lat_s))
-        rondes[0] = min(lat_s)
-        rondes[lat_s.shape[0]-1] = min(lat_s)
+        lat_n, lat_s = smooth_gps_data(lat)
+        lon_n, lon_s = smooth_gps_data(lon)
+        alt_n, alt_s = smooth_gps_data(alt)
+
+        lat_lap_times = []
+        lon_lap_times = []
+        alt_lap_times = []
+        lat_lap_indicator = [min(lat_s)] * lat_s.shape[0] # Initialize the array with the minimum value to facilitate drawing both arrays in one graph
+        lon_lap_indicator = [min(lon_s)] * lon_s.shape[0] # Initialize the array with the minimum value to facilitate drawing both arrays in one graph
+        alt_lap_indicator = [min(alt_s)] * alt_s.shape[0] # Initialize the array with the minimum value to facilitate drawing both arrays in one graph
         
-        t_vorige = time[0]
-        for i in range(1,lat_s.shape[0] - 1):
-            if ((lat_s[i] < lat_s[i+1]) and (lat_s[i] < lat_s[i-1]) and (time[i] - t_vorige).total_seconds() > 40):
-                rondetijden.append(time[i])
-                rondes[i] = max(lat_s)
-                t_vorige = time[i]
-            else: 
-                rondes[i] = min(lat_s)
+        lat_t_previous = time[0] - datetime.timedelta(seconds=minimum_lap_time)
+        lon_t_previous = time[0] - datetime.timedelta(seconds=minimum_lap_time)
+        alt_t_previous = time[0] - datetime.timedelta(seconds=minimum_lap_time)
+
+        for i in range(1,lat_s.shape[0] - 1):  # i runs from the 2nd untile the 1 but last element because we compare with the previous and and next point
+            # Test whether this is a local minimum
+            lat_t_previous = test_on_minimum(i, lat_s, time, lat_t_previous, lat_lap_times, lat_lap_indicator)
+            lon_t_previous = test_on_minimum(i, lon_s, time, lon_t_previous, lon_lap_times, lon_lap_indicator)
+            alt_t_previous = test_on_minimum(i, alt_s, time, alt_t_previous, alt_lap_times, alt_lap_indicator)
+#            if ((lat_s[i] < lat_s[i+1]) and \
+#                (lat_s[i] < lat_s[i-1]) and \
+#                # and ensure a minmum lap duration
+#                (time[i] - lat_t_previous).total_seconds() > minimum_lap_time):
+#                lap_times.append(time[i])
+#                lon_lap_indicator[i] = max(lat_s)
+#                lat_t_previous = time[i]
+        print ("Nr of laps: ", len(lat_lap_times))
+        print ("Nr of laps: ", len(lon_lap_times))
+        print ("Nr of laps: ", len(alt_lap_times))
+        fig = plt.figure()
+        fig.set_size_inches(30,10)
+        plt.subplot(411)
+        plt.plot(lat_n[0:1000])
+        plt.plot(lat_lap_indicator[0:1000], ":", lw=0.5, c="black")
+        plt.subplot(412)
+        plt.plot(lat_s[0:1000])
+        plt.plot(lat_lap_indicator[0:1000], ":", lw=0.5, c="black")
+        plt.subplot(413)
+        plt.plot(lon_n[0:1000])
+        plt.plot(lon_lap_indicator[0:1000], ":", lw=0.5, c="black")
+        plt.subplot(414)
+        plt.plot(lon_s[0:1000])
+        plt.plot(lon_lap_indicator[0:1000], ":", lw=0.5, c="black")
+
+        fft_lat = fft(lat_n)
+        fig2 = plt.figure()
+        fig2.set_size_inches(30,10)
+        plt.subplot(111)
+        plt.plot(abs(fft_lat))
+         
+
         # Remove the first track and create a 2nd track and segment        
         gpx.tracks.remove(gpx.tracks[0])
         gpx_track = gpxpy.gpx.GPXTrack()
@@ -72,19 +117,12 @@ def main():
         gpx.tracks.append(gpx_track)
         gpx_track.segments.append(gpx_segment)
 
-        for r in range (0,len(rondetijden)-1):
-            add_rondje(r+1, gpx_segment,rondetijden[r],rondetijden[r+1])
+        for r in range (len(lat_lap_times)-1):
+            add_rondje(r+1, gpx_segment,lat_lap_times[r],lat_lap_times[r+1])
  
 #        for point in segment.points:
 #            point.latitude = point.latitude * 1.01
        
-        fig = plt.figure()
-        fig.set_size_inches(30,10)
-        plt.subplot(211)
-        plt.plot(lat)
-        plt.subplot(212)
-        plt.plot(lat_s)
-        plt.plot(rondes, ":", lw=0.5, c="black")
         
 #                    point.latitude = point.latitude   * 1.000015 * random.uniform(0.999999, 1.000001) - 0.0006      
 #                    point.latitude = point.latitude   * random.uniform(0.999999, 1.000001) - 0.00003     
@@ -96,7 +134,7 @@ def main():
      
 def add_rondje(r, gpx_segment, t1, t2):
     delta = (t2-t1).total_seconds() / 50
-#    print ("rondetijd ", r, ":\t", (t2-t1).total_seconds())
+#    print ("lap time ", r, ":\t", (t2-t1).total_seconds())
     print ( (t2-t1).total_seconds())
     t = t1
     gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414833, 5.4724, elevation=12, time=t))
@@ -199,5 +237,36 @@ def add_rondje(r, gpx_segment, t1, t2):
     t += datetime.timedelta(seconds=delta)
     gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414905, 5.4724, elevation=12, time=t))
 
+def smooth_gps_data(x):
+        x_a = np.asarray(x)
+        x_min = min(x)
+        x_delta = max(x)-min(x)
+        x_n = (x_a-x_min)/x_delta
+        x_s = savgol_filter(x_n, 45, 5) # deze 45 en 3 zijn maar wat gegokt
+        return x_n, x_s
+
+def test_on_minimum(i, x, t, tp, y1, y2):
+    delta_t = (t[i] - tp).total_seconds()
+    if ((x[i] < x[i+1]) and (x[i] < x[i-1]) and (delta_t > minimum_lap_time)):
+        y1.append(t[i])
+        y2[i] = 1
+        tp = t[i]
+        print ("Delta_t =", delta_t)
+    return tp
+
+def cross_correlation_using_fft(x, y):
+    f1 = fft(x)
+    f2 = fft(np.flipud(y))
+    cc = np.real(ifft(f1 * f2))
+    return fftshift(cc)
+
+# shift &lt; 0 means that y starts 'shift' time steps before x # shift &gt; 0 means that y starts 'shift' time steps after x
+def compute_shift(x, y):
+    assert len(x) == len(y)
+    c = cross_correlation_using_fft(x, y)
+    assert len(c) == len(x)
+    zero_index = int(len(x) / 2) - 1
+    shift = zero_index - np.argmax(c)
+    return shift
 main()
 
