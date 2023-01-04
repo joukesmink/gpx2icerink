@@ -13,7 +13,7 @@ import numpy as np
 
 minimum_lap_time = 40
 
-data_path = '/Users/Jouke/Downloads/*lekker*.gpx'
+data_path = '/Users/Jouke/Downloads/schaatsnacht*.gpx'
 
 #   <trkpt lat="51.5033710" lon="5.3644590">
 #    <ele>-12.2</ele>
@@ -58,16 +58,17 @@ def main():
 #                    for i in p:
 #                        print(i, p[i])
 #                   print (p['TrackPointExtension']['hr'])
-        lat_n, lat_s = smooth_gps_data(lat)
-        lon_n, lon_s = smooth_gps_data(lon)
-        alt_n, alt_s = smooth_gps_data(alt)
+        lat_n, lat_s = smooth_gps_data(lat, time)
+        lon_n, lon_s = smooth_gps_data(lon, time)
+        alt_n, alt_s = smooth_gps_data(alt, time)
 
         lat_lap_times = []
         lon_lap_times = []
         alt_lap_times = []
-        lat_lap_indicator = [min(lat_s)] * lat_s.shape[0] # Initialize the array with the minimum value to facilitate drawing both arrays in one graph
-        lon_lap_indicator = [min(lon_s)] * lon_s.shape[0] # Initialize the array with the minimum value to facilitate drawing both arrays in one graph
-        alt_lap_indicator = [min(alt_s)] * alt_s.shape[0] # Initialize the array with the minimum value to facilitate drawing both arrays in one graph
+
+        lat_lap_indicator = [0] * lat_s.shape[0] # Initialize the array with the minimum value to facilitate drawing both arrays in one graph
+        lon_lap_indicator = [0] * lon_s.shape[0] # Initialize the array with the minimum value to facilitate drawing both arrays in one graph
+        alt_lap_indicator = [0] * alt_s.shape[0] # Initialize the array with the minimum value to facilitate drawing both arrays in one graph
         
         lat_t_previous = time[0] - datetime.timedelta(seconds=minimum_lap_time)
         lon_t_previous = time[0] - datetime.timedelta(seconds=minimum_lap_time)
@@ -78,36 +79,34 @@ def main():
             lat_t_previous = test_on_minimum(i, lat_s, time, lat_t_previous, lat_lap_times, lat_lap_indicator)
             lon_t_previous = test_on_minimum(i, lon_s, time, lon_t_previous, lon_lap_times, lon_lap_indicator)
             alt_t_previous = test_on_minimum(i, alt_s, time, alt_t_previous, alt_lap_times, alt_lap_indicator)
-#            if ((lat_s[i] < lat_s[i+1]) and \
-#                (lat_s[i] < lat_s[i-1]) and \
-#                # and ensure a minmum lap duration
-#                (time[i] - lat_t_previous).total_seconds() > minimum_lap_time):
-#                lap_times.append(time[i])
-#                lon_lap_indicator[i] = max(lat_s)
-#                lat_t_previous = time[i]
-        print ("Nr of laps: ", len(lat_lap_times))
-        print ("Nr of laps: ", len(lon_lap_times))
-        print ("Nr of laps: ", len(alt_lap_times))
+
+        print ("Nr of laps lat: ", len(lat_lap_times))
+        print ("Nr of laps lon: ", len(lon_lap_times))
+        print ("Nr of laps alt: ", len(alt_lap_times))
+
         fig = plt.figure()
         fig.set_size_inches(30,10)
-        plt.subplot(411)
+        plt.subplot(511)
         plt.plot(lat_n[0:1000])
         plt.plot(lat_lap_indicator[0:1000], ":", lw=0.5, c="black")
-        plt.subplot(412)
+        plt.subplot(512)
         plt.plot(lat_s[0:1000])
         plt.plot(lat_lap_indicator[0:1000], ":", lw=0.5, c="black")
-        plt.subplot(413)
+        plt.subplot(513)
         plt.plot(lon_n[0:1000])
         plt.plot(lon_lap_indicator[0:1000], ":", lw=0.5, c="black")
-        plt.subplot(414)
+        plt.subplot(514)
         plt.plot(lon_s[0:1000])
         plt.plot(lon_lap_indicator[0:1000], ":", lw=0.5, c="black")
+        plt.subplot(515)
+        plt.plot(lat_n)
+        plt.plot(lat_lap_indicator, ":", lw=0.5, c="black")
 
         fft_lat = fft(lat_n)
         fig2 = plt.figure()
         fig2.set_size_inches(30,10)
         plt.subplot(111)
-        plt.plot(abs(fft_lat))
+        plt.plot(abs(fft_lat[0:200]))
          
 
         # Remove the first track and create a 2nd track and segment        
@@ -133,111 +132,65 @@ def main():
         gpx_file2.close()
      
 def add_rondje(r, gpx_segment, t1, t2):
-    delta = (t2-t1).total_seconds() / 50
-#    print ("lap time ", r, ":\t", (t2-t1).total_seconds())
     print ( (t2-t1).total_seconds())
-    t = t1
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414833, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414761, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414689, 5.472409, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414622, 5.472449, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414565, 5.472518, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414522, 5.47261, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414497, 5.472718, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414492, 5.472833, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414507, 5.472945, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414541, 5.473046, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414592, 5.473127, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414655, 5.473182, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414725, 5.473206, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414797, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414869, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414941, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415013, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415085, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415156, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415228, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.4153, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415372, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415444, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415516, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415588, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.41566, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415732, 5.473208, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415804, 5.473198, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415871, 5.473158, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415928, 5.473089, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415971, 5.472997, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415996, 5.47289, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.416001, 5.472775, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415986, 5.472663, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415952, 5.472562, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415901, 5.472481, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415838, 5.472425, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415768, 5.472401, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415696, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415624, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415552, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.41548, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415408, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415336, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415264, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415192, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.41512, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.415049, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414977, 5.4724, elevation=12, time=t))
-    t += datetime.timedelta(seconds=delta)
-    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(51.414905, 5.4724, elevation=12, time=t))
+    delta = (t2-t1).total_seconds() / 50
+    t = add_trackpoint(gpx_segment, 51.414833, 5.472400, t1, delta)
+    t = add_trackpoint(gpx_segment, 51.414761, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414689, 5.472409, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414622, 5.472449, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414565, 5.472518, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414522, 5.472610, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414497, 5.472718, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414492, 5.472833, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414507, 5.472945, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414541, 5.473046, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414592, 5.473127, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414655, 5.473182, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414725, 5.473206, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414797, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414869, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414941, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415013, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415085, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415156, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415228, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415300, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415372, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415444, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415516, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415588, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415660, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415732, 5.473208, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415804, 5.473198, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415871, 5.473158, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415928, 5.473089, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415971, 5.472997, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415996, 5.472890, t, delta)
+    t = add_trackpoint(gpx_segment, 51.416001, 5.472775, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415986, 5.472663, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415952, 5.472562, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415901, 5.472481, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415838, 5.472425, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415768, 5.472401, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415696, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415624, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415552, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415480, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415408, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415336, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415264, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415192, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415120, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.415049, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414977, 5.472400, t, delta)
+    t = add_trackpoint(gpx_segment, 51.414905, 5.472400, t, delta)
 
-def smooth_gps_data(x):
+def add_trackpoint(gpx_segment, lat, lon, t, delta):
+    gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(lat, lon, elevation=12, time=t))
+    t += datetime.timedelta(seconds=delta)
+    return t
+
+def smooth_gps_data(x, t):
         x_a = np.asarray(x)
         x_min = min(x)
         x_delta = max(x)-min(x)
@@ -247,11 +200,12 @@ def smooth_gps_data(x):
 
 def test_on_minimum(i, x, t, tp, y1, y2):
     delta_t = (t[i] - tp).total_seconds()
-    if ((x[i] < x[i+1]) and (x[i] < x[i-1]) and (delta_t > minimum_lap_time)):
+    if ((x[i] < x[i+1]) and \
+        (x[i] < x[i-1]) and \
+        (delta_t > minimum_lap_time)):
         y1.append(t[i])
         y2[i] = 1
         tp = t[i]
-        print ("Delta_t =", delta_t)
     return tp
 
 def cross_correlation_using_fft(x, y):
